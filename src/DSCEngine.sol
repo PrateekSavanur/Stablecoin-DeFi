@@ -35,6 +35,7 @@ contract DSCEngine {
     DecentralizedStableCoin private immutable i_dsc;
 
     event CollateralDeposited(address indexed user, address indexed token, uint256 indexed amount);
+    event CollateralRedeemed(address indexed user, address indexed token, uint256 indexed amount);
 
     modifier moreThanZero(uint256 amount) {
         if (amount == 0) {
@@ -63,7 +64,21 @@ contract DSCEngine {
         i_dsc = DecentralizedStableCoin(dscAddress);
     }
 
-    function depositCollateralAndMintDSC() external {}
+    /**
+     *
+     * @param tokenCollateralAddress The address of token to deposit as collateral
+     * @param amountCollateral the amount of collateral to deposit(Not in USD)
+     * @param amountDscToMint The amount of DSC token to mint
+     * @notice this function will deposit collateral and mint dsc in one function
+     */
+    function depositCollateralAndMintDSC(
+        address tokenCollateralAddress,
+        uint256 amountCollateral,
+        uint256 amountDscToMint
+    ) external {
+        depositCollateral(tokenCollateralAddress, amountCollateral);
+        mintDsc(amountDscToMint);
+    }
 
     /**
      * Follows CEI(Check effect interact)
@@ -71,7 +86,7 @@ contract DSCEngine {
      * @param amountCollateral the amount of token to deposit
      */
     function depositCollateral(address tokenCollateralAddress, uint256 amountCollateral)
-        external
+        public
         moreThanZero(amountCollateral)
         isAllowedToken(tokenCollateralAddress)
     {
@@ -84,16 +99,46 @@ contract DSCEngine {
         }
     }
 
-    function redeemCollateralForDSC() external {}
+    /**
+     *
+     * @param tokenCollateralAddress The collateral address to redeem
+     * @param amountCollateral amount of collateral to redeem
+     * @param amountDscToBurn amount of DSC token to burn
+     * This fxn burns dsc and redeems collateral in one txn
+     */
+    function redeemCollateralForDSC(address tokenCollateralAddress, uint256 amountCollateral, uint256 amountDscToBurn)
+        external
+    {
+        burnDsc(amountDscToBurn);
+        redeemCollateral(tokenCollateralAddress, amountCollateral);
+    }
 
-    function redeemCollateral() external {}
+    // In order to redeem collateral
+    // health factor must be >1 after collateral redeemed
+    function redeemCollateral(address tokenCollateralAddress, uint256 amountCollateral)
+        public
+        moreThanZero(amountCollateral)
+    {
+        // 100 -1000 (revert) -> new solidity doesnt do unsafe math
+        s_collateralDeposited[msg.sender][tokenCollateralAddress] -= amountCollateral;
+        emit CollateralRedeemed(msg.sender, tokenCollateralAddress, amountCollateral);
+
+        // return the money - CEI violated
+        bool success = IERC20(tokenCollateralAddress).transfer(msg.sender, amountCollateral);
+
+        if (!success) {
+            revert DSCEngine__TransferFailed();
+        }
+
+        _revertIfHealthFactorIsBroken(msg.sender);
+    }
 
     /**
      *
      * @param amountDscToMint The amount of centralized stablecoin to mint
      * @notice They must have more collateral value than minted
      */
-    function mintDsc(uint256 amountDscToMint) external moreThanZero(amountDscToMint) {
+    function mintDsc(uint256 amountDscToMint) public moreThanZero(amountDscToMint) {
         s_DSCMinted[msg.sender] += amountDscToMint;
         _revertIfHealthFactorIsBroken(msg.sender);
         bool minted = i_dsc.mint(msg.sender, amountDscToMint);
@@ -102,7 +147,16 @@ contract DSCEngine {
         }
     }
 
-    function burnDsc() external {}
+    function burnDsc(uint256 amount) public moreThanZero(amount) {
+        s_DSCMinted[msg.sender] -= amount;
+        bool success = i_dsc.transferFrom(msg.sender, address(this), amount);
+        if (!success) {
+            revert DSCEngine__TransferFailed();
+        }
+
+        i_dsc.burn(amount);
+        _revertIfHealthFactorIsBroken(msg.sender);
+    }
 
     function liquidate() external {}
 
