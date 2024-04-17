@@ -8,7 +8,7 @@ import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/Ag
 /**
  * @title DSCEngine
  * @author Prateek Savanur
- *
+ * Referred from Foundry course by Patrick Collins
  * The system is as minimal as possible , and maintains 1 DSC token to 1$
  * DSC system must be overcollateralized. More collateral than DSC
  * @notice THis is core contract of DSC system -> Based on MakerDAO DSS(DAI)

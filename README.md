@@ -27,6 +27,13 @@ The `DSCEngine` contract also provides various getter functions to retrieve info
 3. User can redeem their collateral by burning DSC tokens using `redeemCollateralForDSC`.
 4. If a user's health factor falls below the minimum threshold, their position can be liquidated by others using the `liquidate` function.
 
+## Tests
+
+1. Unit tests for DecentralizedStableCoin and DSCEngine Contracts
+2. Invariant(Stateful) fuzz tests. Invariants tested are
+   1. The total supply of DSC should be less than total value of collateral
+   2. Getter/ view functions should never revert 
+
 ## Key Features
 
 - Overcollateralized system: Users must maintain a minimum health factor to mint DSC tokens.
