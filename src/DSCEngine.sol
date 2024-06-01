@@ -4,6 +4,7 @@ pragma solidity ^0.8.18;
 import {DecentralizedStableCoin} from "./DecentralizedStableCoin.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import {OrableLib} from "./library/OracleLib.sol";
 
 /**
  * @title DSCEngine
@@ -22,6 +23,8 @@ contract DSCEngine {
     error DSCEngine__MintFailed();
     error DSCengine__HealthFactorFine();
     error DSCEngine__HealthFactorNotImproved();
+
+    using OrableLib for AggregatorV3Interface;
 
     uint256 private constant ADDITIONAL_FEED_PRECISION = 1e10;
     uint256 private constant PRECISION = 1e18;
